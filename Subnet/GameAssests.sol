@@ -41,27 +41,31 @@ contract GameAssests is ERC721URIStorage{
 
     constructor(address _owner) ERC721("GAME ASSET","GAT"){ // Game Asset 
         owner = _owner;
-
+       setApprovalForAll(msg.sender, true);
     }
 
-    modifier onlyOwner{
-        _onlyOwner();
+    modifier onlyOwner(address _owner){
+        _onlyOwner(_owner);
         _;
     }
 
-    function _onlyOwner() internal view{
-        require(owner == msg.sender);
+    function getOwner() external view returns(address){
+        return owner;
     }
 
-    function gameAssetMint(address _receiver, uint _choice) external onlyOwner{
-        require(_choice < assetURI.length);
+    function _onlyOwner(address _owner) internal view{
+        require(owner == _owner,"You are not the owner");
+    }
+
+    function gameAssetMint(address _receiver, uint _choice,address _owner) external onlyOwner(_owner){
+        require(_choice < assetURI.length,"choice is more than the length of the assetURI");
         _mint(_receiver, CountToken);
         _setTokenURI(CountToken,assetURI[_choice]);
         mintedTokenCount.push(CountToken);
         CountToken++;
     }
 
-    function uniqueAssetMint(address _receiver, uint _choice) external onlyOwner{
+    function uniqueAssetMint(address _receiver, uint _choice,address _owner) external onlyOwner(_owner){
         require(_choice <uniqueAssetURI.length);
         _mint(_receiver,CountToken);
         _setTokenURI(CountToken, uniqueAssetURI[_choice]);
@@ -69,7 +73,7 @@ contract GameAssests is ERC721URIStorage{
         CountToken++;
     }
 
-     function specialAssetMint(address _receiver, uint _choice) external onlyOwner{
+     function specialAssetMint(address _receiver, uint _choice,address _owner) external onlyOwner(_owner){
         require(_choice <specialAssetURI.length);
         _mint(_receiver,CountToken);
         _setTokenURI(CountToken, specialAssetURI[_choice]);
@@ -81,11 +85,19 @@ contract GameAssests is ERC721URIStorage{
         return assetURI.length;
     }
 
+    ///@notice : Granting permission to other address to transfer my NFTs (granting permission to MortalGame)
 
-    function transferAsset(address _sender,address _recepient, uint _input) external {
+    function grantPermission(address _contractAddress, uint _tokenID) external {
+        approve(_contractAddress, _tokenID);
+    }
+
+
+    function transferAsset(address _sender,address _recepient, uint _inputTokenId) external {
         require(balanceOf(_sender)>0,"Don't have any NFT");
-        require(ownerOf(_input) == _sender,"Not the owner of tokenId");
-        safeTransferFrom(_sender, _recepient, _input);
+        require(ownerOf(_inputTokenId) == _sender,"Not the owner of tokenId");
+        // safeTransferFrom(_sender, _recepient, _inputTokenId); //check with transferFrom.
+        // transferFrom(_sender, _recepient, _inputTokenId);
+        _transfer(_sender, _recepient, _inputTokenId);
     }
 
     function transferFromOwner(address _recepient, uint _input)external{
@@ -99,6 +111,7 @@ contract GameAssests is ERC721URIStorage{
     function totalAssetsMinted() external view returns(uint){
         return CountToken;
     }
-  
+//   0x03ceb275E546DdC78dd5e482ac392213BE17ce53
+//0x03ceb275E546DdC78dd5e482ac392213BE17ce53
 
 }
