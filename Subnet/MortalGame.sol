@@ -33,10 +33,10 @@ contract MortalGame is ERC20{
     mapping(uint => bool) private isAvailableAsset;
     Player[] public leaderBoard;
 
-    mapping(address=> uint) private leaderBoardIndex;
+    mapping(address=> uint) public leaderBoardIndex;
     mapping(address => bool)private inLeaderBoard;
-     address private lastHighestOwner;
-    uint private lastHighest;
+     address public lastHighestOwner;
+    uint public lastHighest;
 
     uint[] public tokenIdNFTCollection;
 
@@ -121,33 +121,47 @@ function rewardTokens(address _receiver, uint _amount) external{
 
 ///@notice : For NFT Auction (see this later)
 
-struct AuctionData{
-    address _seller;
-    uint _NFTID;
-}
-uint auctionCounter = 0;
+    struct AuctionData{
+        address seller;
+        uint NFTID;
+    }
+    uint auctionCounter;
 
-AuctionData[] public auction;
+    AuctionData[] public auction;
     function forAuctionNFT(uint _tokenID) external{
         asset1.transferAsset(msg.sender,address(this),_tokenID);
-        auction[auctionCounter] = AuctionData(msg.sender,_tokenID);
+        auction.push(AuctionData(msg.sender,_tokenID));
         isAvailableAsset[_tokenID] = true;
     }
 
 
-        ///@notice : Auction for Buying the NFTs (incomplete)
+        ///@notice : Auction for Buying the NFTs (complete)
 
-      function auctionBuyNFT() public payable{
-        if(msg.value > lastHighest){
-            (bool callmsg, ) = payable(lastHighestOwner).call{value:lastHighest}("");
-            require(callmsg,"Can't Transfered");
-            lastHighest = msg.value;
-        }
+      function auctionBuyNFT(uint _tokenAmount) external{
+        require(balanceOf(msg.sender) >= _tokenAmount,"Not enough token with the bidder");
+        if(_tokenAmount > lastHighest){
+            transfer(address(this), _tokenAmount);
+            if(lastHighestOwner!=address(0)){
+                  _transfer((address(this)),lastHighestOwner,lastHighest);
+            }
+            lastHighest = _tokenAmount;
             lastHighestOwner = msg.sender;
+            
+        }
       }
 
-      function finishAuction() external onlyOwner{
+      ///@notice sending the nft to the highest bidder.
+      // sending the 80% of tokens to the seller
 
+      function finishAuction() external onlyOwner{
+        if(auction[auctionCounter].seller != address(0)){
+            uint profit = lastHighest % 5;
+            _transfer(address(this), auction[auctionCounter].seller, lastHighest - profit);
+            asset1.transferAsset((address(this)),lastHighestOwner,auction[auctionCounter].NFTID);
+            auctionCounter++;
+            lastHighest = 0;
+            lastHighestOwner = address(0);
+        }
       }
 
 
@@ -194,6 +208,7 @@ AuctionData[] public auction;
         bool res = playWithSystem(_input);
         if(res){
             emit rpsGameResult("You won");
+            // adjustRanking();
             return "You won";
         }else{
             emit rpsGameResult("you lost");
@@ -220,7 +235,6 @@ AuctionData[] public auction;
     function guessTheNumber(uint _inputNumber) internal returns(bool,uint){
         uint machine = machineRandomNumber()%5;
 
- 
         if(_inputNumber == machine){
             leaderBoard[leaderBoardIndex[msg.sender]].score = leaderBoard[leaderBoardIndex[msg.sender]].score + 2;
             return (true,machine);
@@ -233,12 +247,15 @@ AuctionData[] public auction;
 
         (bool res, uint number ) = guessTheNumber(_inputNumber);
         string memory message;
+        
        
         if(res){
              message = "You won the number was indeed ";
+            //  adjustRanking();
             return  string.concat(message, Strings.toString(number));
         }
          message = "You Lost the number was ";
+        
         return  string.concat(message, Strings.toString(number));
     }
 
@@ -260,6 +277,50 @@ AuctionData[] public auction;
             leaderBoardIndex[msg.sender] = leaderBoard.length;
             Player memory newPlayer = Player(msg.sender,0);
             leaderBoard.push(newPlayer);
+        }
+    }
+
+
+    function adjustRanking() internal {
+        uint l = leaderBoard.length;
+        if(l == 1) return;
+        Player memory temp;
+
+        for(uint i =1;i<l;i++){
+            if(leaderBoard[i-1].score <= leaderBoard[i].score){
+                temp = Player(leaderBoard[i].playerAddress,leaderBoard[i].score);
+                leaderBoard[i] = Player(leaderBoard[i-1].playerAddress,leaderBoard[i-1].score);
+                leaderBoard[i-1] = temp;
+                leaderBoardIndex[leaderBoard[i-1].playerAddress] = i;
+                leaderBoardIndex[leaderBoard[i].playerAddress] = i-1;
+            }
+        }
+    }
+
+    function getRankings() external view returns(Player[] memory){
+        
+        return leaderBoard;
+    }
+
+
+    ///@notice reward after ending the season 
+    // special NFT to rank 1 player
+    // unique NFT to rank 2 and rank 3 player.
+
+    function endSeason(uint _speicalID, uint _uniqueID) external onlyOwner{
+        adjustRanking();
+        uint l = leaderBoard.length;
+
+        if(l == 1){
+            rewardSpecialNFTs(leaderBoard[0].playerAddress, _speicalID);
+
+         }else if(l == 2){
+             rewardSpecialNFTs(leaderBoard[0].playerAddress, _speicalID);
+              rewardUniqueNFTs(leaderBoard[1].playerAddress,_uniqueID);
+        }else{
+            rewardSpecialNFTs(leaderBoard[0].playerAddress, _speicalID);
+            rewardUniqueNFTs(leaderBoard[1].playerAddress,_uniqueID);
+            rewardUniqueNFTs(leaderBoard[2].playerAddress,_uniqueID);
         }
     }
 
