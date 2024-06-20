@@ -125,13 +125,13 @@ struct AuctionData{
     address _seller;
     uint _NFTID;
 }
-uint auctionCounter = 0;
+uint auctionCounter;
 
 AuctionData[] public auction;
     function forAuctionNFT(uint _tokenID) external{
         asset1.transferAsset(msg.sender,address(this),_tokenID);
-        auction[auctionCounter] = AuctionData(msg.sender,_tokenID);
-        isAvailableAsset[_tokenID] = true;
+        auction.push(AuctionData(msg.sender,_tokenID));
+        // isAvailableAsset[_tokenID] = true;
     }
 
 
