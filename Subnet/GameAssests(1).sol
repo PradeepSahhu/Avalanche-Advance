@@ -63,7 +63,7 @@ contract GameAssests is ERC721URIStorage{
         _mint(_receiver, CountToken);
         _setTokenURI(CountToken,assetURI[_choice]);
         mintedTokenCount.push(CountToken);
-        availableTokenIDs[_receiver].push(CountToken);
+        availableTokenIDs[_receiver].push(_choice);
         CountToken++;
     }
 
@@ -72,7 +72,7 @@ contract GameAssests is ERC721URIStorage{
         _mint(_receiver,CountToken);
         _setTokenURI(CountToken, uniqueAssetURI[_choice]);
          mintedTokenCount.push(CountToken);
-          availableTokenIDs[_receiver].push(CountToken);
+          availableTokenIDs[_receiver].push(_choice);
         CountToken++;
     }
 
@@ -81,7 +81,7 @@ contract GameAssests is ERC721URIStorage{
         _mint(_receiver,CountToken);
         _setTokenURI(CountToken, specialAssetURI[_choice]);
          mintedTokenCount.push(CountToken);
-          availableTokenIDs[_receiver].push(CountToken);
+          availableTokenIDs[_receiver].push(_choice);
         CountToken++;
     }
 
@@ -102,10 +102,10 @@ contract GameAssests is ERC721URIStorage{
         require(ownerOf(_inputTokenId) == _sender,"Not the owner of tokenId");
         // safeTransferFrom(_sender, _recepient, _inputTokenId); //check with transferFrom.
         // transferFrom(_sender, _recepient, _inputTokenId);
-         availableTokenIDs[_recepient].push(_inputTokenId);
-         removeElement(_sender,_inputTokenId);
         _transfer(_sender, _recepient, _inputTokenId);
-        
+        delete availableTokenIDs[_sender];// will not work
+         availableTokenIDs[_recepient].push(_inputTokenId);
+         removeElement(_recepient,_inputTokenId);
     }
 
     function removeElement(address _recepient,uint _inputTokenId) internal{
@@ -114,7 +114,6 @@ contract GameAssests is ERC721URIStorage{
             if(availableTokenIDs[_recepient][i] == _inputTokenId){
                 availableTokenIDs[_recepient][i] = availableTokenIDs[_recepient][l-1];
                 availableTokenIDs[_recepient].pop();
-                break;
             }
         }
     }

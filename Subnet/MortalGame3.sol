@@ -28,17 +28,17 @@ contract MortalGame is ERC20{
     address private immutable owner;
 
 
-    GameAssests private gameAsset;
+    GameAssests public asset1;
 
     mapping(uint => bool) private isAvailableAsset;
-    Player[] private leaderBoard;
+    Player[] public leaderBoard;
 
-    mapping(address=> uint) private leaderBoardIndex;
+    mapping(address=> uint) public leaderBoardIndex;
     mapping(address => bool)private inLeaderBoard;
-     address private lastHighestOwner;
-    uint private lastHighest;
+     address public lastHighestOwner;
+    uint public lastHighest;
 
-    uint[] private tokenIdNFTCollection;
+    uint[] public tokenIdNFTCollection;
 
     modifier onlyOwner{
         _onlyOwner();
@@ -54,20 +54,20 @@ contract MortalGame is ERC20{
 
 
     constructor() ERC20("MortalGame","MGT"){
-        gameAsset = new GameAssests(msg.sender);
+        asset1 = new GameAssests(msg.sender);
         owner = msg.sender;
         _mint((address(this)),100000 * 10 ** 18);
     }
 
     // (working)
 
-    function mintMoreGameCurrencty(uint _amount) external onlyOwner{
+    function mintMoreGameCurrencty(uint _amount) external{
         _mint((address(this)), _amount * 10 **18);
     }
 
 
     function getGameAssets(uint _choice) external {
-        gameAsset.gameAssetMint((address(this)), _choice, msg.sender);
+        asset1.gameAssetMint((address(this)), _choice, msg.sender);
     }
 
 ///@notice : To buy tokens from the game (exchange ethers for tokens) 1 token = 1000 wei (working)
@@ -87,7 +87,7 @@ function directBuyNFTs(uint _tokenAmount,uint _NFTID) external{
     require(balanceOf(msg.sender)>=_tokenAmount,"Not Enough tokens in the account");
    bool res =  transfer(address(this),_tokenAmount);
    require(res,"Not successful");
-   if(gameAsset.balanceOf(address(this)) > 0){
+   if(asset1.balanceOf(address(this)) > 0){
         toTransferNFT(msg.sender,_NFTID);
    }else{
     rewardBasicNFTs(msg.sender,_NFTID);
@@ -96,13 +96,13 @@ function directBuyNFTs(uint _tokenAmount,uint _NFTID) external{
 
 ///@notice Rewarding NFTS
     function rewardBasicNFTs(address _receiver, uint _choice)internal {
-        gameAsset.gameAssetMint(_receiver, _choice, msg.sender);
+        asset1.gameAssetMint(_receiver, _choice, msg.sender);
     }
     function rewardUniqueNFTs(address _receiver, uint _choice) internal{
-        gameAsset.uniqueAssetMint(_receiver, _choice, msg.sender);
+        asset1.uniqueAssetMint(_receiver, _choice, msg.sender);
     }
     function rewardSpecialNFTs(address _receiver, uint _choice) internal{
-        gameAsset.specialAssetMint(_receiver, _choice, msg.sender);
+        asset1.specialAssetMint(_receiver, _choice, msg.sender);
     }
 
 ///@notice Rewarding Tokens (working)
@@ -129,7 +129,7 @@ function rewardTokens(address _receiver, uint _amount) external{
 
     AuctionData[] public auction;
     function forAuctionNFT(uint _tokenID) external{
-        gameAsset.transferAsset(msg.sender,address(this),_tokenID);
+        asset1.transferAsset(msg.sender,address(this),_tokenID);
         auction.push(AuctionData(msg.sender,_tokenID));
         isAvailableAsset[_tokenID] = true;
     }
@@ -155,9 +155,9 @@ function rewardTokens(address _receiver, uint _amount) external{
 
       function finishAuction() external onlyOwner{
         if(auction[auctionCounter].seller != address(0)){
-            uint profit = (lastHighest /100)*20;
+            uint profit = lastHighest % 5;
             _transfer(address(this), auction[auctionCounter].seller, lastHighest - profit);
-            gameAsset.transferAsset((address(this)),lastHighestOwner,auction[auctionCounter].NFTID);
+            asset1.transferAsset((address(this)),lastHighestOwner,auction[auctionCounter].NFTID);
             auctionCounter++;
             lastHighest = 0;
             lastHighestOwner = address(0);
@@ -168,7 +168,7 @@ function rewardTokens(address _receiver, uint _amount) external{
 //
 
     function getOwner() external view returns(address){
-        return gameAsset.getOwner();
+        return asset1.getOwner();
     }
 
 
@@ -176,17 +176,11 @@ function rewardTokens(address _receiver, uint _amount) external{
 
 ///@notice : To sell his/her nft to the liquidity Pool for some amount of tokens. 
       function toSellNFT(uint _tokenID) external {
-        gameAsset.transferAsset(msg.sender,(address(this)),_tokenID);
+        asset1.transferAsset(msg.sender,(address(this)),_tokenID);
       }
 
-      function toTransferNFT(address _recepient, uint _tokenID) internal{
-        gameAsset.transferAsset((address(this)), _recepient, _tokenID);
-      }
-
-// To transfer my NFT to some friend.
-      function transferNFT(address _recepient, uint _tokenID) external {
-        require(_recepient != address(0));
-        gameAsset.transferAsset(msg.sender,_recepient, _tokenID);
+      function toTransferNFT(address _recepient, uint _tokenID) public{
+        asset1.transferAsset((address(this)), _recepient, _tokenID);
       }
 
 
@@ -275,11 +269,6 @@ function rewardTokens(address _receiver, uint _amount) external{
     }
 
 
-    function ownNft() external view returns(uint[] memory) {
-        return gameAsset.getOwnNfts(msg.sender);
-    }
-
-
     ///@notice Register the user in the leaderBoard.
 
     function registerPlayer()external {
@@ -292,7 +281,7 @@ function rewardTokens(address _receiver, uint _amount) external{
     }
 
 
-    function adjustRanking() public {
+    function adjustRanking() internal {
         uint l = leaderBoard.length;
         if(l <= 1) return;
    
@@ -376,16 +365,12 @@ function rewardTokens(address _receiver, uint _amount) external{
 
 
     ///@notice : Owner will be able to withdraw all funds and NFTs from the contract in case of any problem
-    function withdrawAllTokens() external onlyOwner{
+    function withdrawAll() external onlyOwner{
         _transfer((address(this)), owner , balanceOf(address(this))); 
        
     }
-    function withAllEth() external onlyOwner{
-        (bool resMsg, ) = payable (owner).call{value:address(this).balance}("");
-        require(resMsg);
-    }
     function withdrawAllNFT(uint _NFTID) external onlyOwner{
-         gameAsset.transferAsset(address(this), owner, _NFTID);
+         asset1.transferAsset(address(this), owner, _NFTID);
     }
 
 
